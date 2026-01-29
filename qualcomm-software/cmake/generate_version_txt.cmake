@@ -24,6 +24,16 @@ execute_process(
     COMMAND_ERROR_IS_FATAL ANY
 )
 
+if(ENABLE_LINUX_LIBRARIES)
+    execute_process(
+        COMMAND git -C ${musl_SOURCE_DIR} rev-parse HEAD
+        OUTPUT_VARIABLE musl_COMMIT
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        COMMAND_ERROR_IS_FATAL ANY
+    )
+    set(musl_version_string "* musl: ${musl_URL} (commit ${musl_COMMIT})\\n")
+endif()
+
 # Supported libcs are all in a separate repo
 set(base_library ${LLVM_TOOLCHAIN_C_LIBRARY})
 

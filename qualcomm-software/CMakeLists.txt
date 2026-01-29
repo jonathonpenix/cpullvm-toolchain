@@ -129,14 +129,20 @@ option(
     index numbers, which is shorter but less descriptive."
     OFF
 )
-
-
+option(
+    ENABLE_LINUX_LIBRARIES
+    "Include additonal library variants for use on Linux targets"
+    OFF
+)
 option(LLVM_TOOLCHAIN_LIBRARY_OVERLAY_INSTALL
     "Make cpack build an overlay package that can be unpacked over the main toolchain to install a secondary set of libraries based on musl-embedded."
     ${overlay_install_default})
 if(LLVM_TOOLCHAIN_LIBRARY_OVERLAY_INSTALL)
   if(LLVM_TOOLCHAIN_C_LIBRARY STREQUAL "picolibc")
     message(FATAL_ERROR "LLVM_TOOLCHAIN_LIBRARY_OVERLAY_INSTALL is only permitted for C libraries other than the default picolibc")
+  endif()
+  if(ENABLE_LINUX_LIBRARIES)
+    message(FATAL_ERROR "ENABLE_LINUX_RUNTIMES is not permitted with LLVM_TOOLCHAIN_LIBRARY_OVERLAY_INSTALL")
   endif()
 endif()
 
@@ -235,8 +241,12 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/fetch_eld.cmake)
 if(LLVM_TOOLCHAIN_C_LIBRARY STREQUAL picolibc)
     include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/fetch_picolibc.cmake)
 endif()
-if(LLVM_TOOLCHAIN_C_LIBRARY STREQUAL musl-embedded)
+# Arm/AArch64 targets also use musl-embedded for Linux.
+if(LLVM_TOOLCHAIN_C_LIBRARY STREQUAL musl-embedded OR ENABLE_LINUX_LIBRARIES)
     include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/fetch_musl-embedded.cmake)
+endif()
+if(ENABLE_LINUX_LIBRARIES)
+    include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/fetch_musl.cmake)
 endif()
 
 ##################################################################################################
@@ -408,6 +418,9 @@ add_custom_target(
     -Dmusl-embedded_URL=${musl-embedded_URL}
     # but we do tell the script which library we're actually using
     -DLLVM_TOOLCHAIN_C_LIBRARY=${LLVM_TOOLCHAIN_C_LIBRARY}
+    -Dmusl_SOURCE_DIR=${musl_SOURCE_DIR}
+    -Dmusl_URL=${musl_URL}
+    -DENABLE_LINUX_LIBRARIES=${ENABLE_LINUX_LIBRARIES}
     -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/generate_version_txt.cmake
     BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/VERSION.txt
 )
@@ -657,10 +670,14 @@ if(LLVM_TOOLCHAIN_C_LIBRARY STREQUAL picolibc)
         ${picolibc_SOURCE_DIR}/COPYING.NEWLIB           COPYING.NEWLIB
         ${picolibc_SOURCE_DIR}/COPYING.picolibc         COPYING.picolibc
     )
-elseif(LLVM_TOOLCHAIN_C_LIBRARY STREQUAL musl-embedded)
+elseif(LLVM_TOOLCHAIN_C_LIBRARY STREQUAL musl-embedded OR ENABLE_LINUX_LIBRARIES)
     list(APPEND third_party_license_files
         ${musl-embedded_SOURCE_DIR}/COPYRIGHT musl-embedded-COPYRIGHT.txt
     )
+endif()
+if(ENABLE_LINUX_LIBRARIES)
+    list(APPEND third_party_license_files
+        ${musl_SOURCE_DIR}/COPYRIGHT musl-COPYRIGHT.txt)
 endif()
 
 while(third_party_license_files)
