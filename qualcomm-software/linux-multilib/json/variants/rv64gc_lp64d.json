@@ -1,0 +1,14 @@
+{
+    "args": {
+        "common": {
+            "TARGET_ARCH": "riscv64",
+            "VARIANT": "rv64gc_lp64d",
+            "COMPILE_FLAGS": "-march=rv64gc -mabi=lp64d",
+            "LIBRARY_BUILD_TYPE": "minsizerelease"
+        },
+        "musl": {
+            "ENABLE_CXX_LIBS": "ON",
+            "EXTRA_MUSL_CONFIG_FLAGS": "--disable-shared"
+        }
+    }
+}

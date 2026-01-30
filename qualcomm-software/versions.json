@@ -24,6 +24,11 @@
       "url": "https://github.com/qualcomm/eld",
       "tagType": "branch",
       "tag": "main"
+    },
+    "linux": {
+      "url": "https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git",
+      "tagType": "tag",
+      "tag": "v5.10.248"
     }
   }
 }

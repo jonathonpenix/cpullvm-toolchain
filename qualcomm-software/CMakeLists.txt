@@ -74,13 +74,25 @@ set(TARGET_LIBRARIES_DIR
     "lib/clang-runtimes" CACHE STRING
     "Directory containing the target libraries."
 )
+set(LINUX_TARGET_LIBRARIES_DIR
+    "lib" CACHE STRING
+    "Directory containing the Linux target libraries."
+)
 set(LLVM_TOOLCHAIN_MULTILIB_JSON
     "${CMAKE_CURRENT_SOURCE_DIR}/embedded-multilib/json/multilib.json" CACHE STRING
     "JSON file defining the multilib."
 )
+set(LLVM_TOOLCHAIN_LINUX_MULTILIB_JSON
+    "${CMAKE_CURRENT_SOURCE_DIR}/linux-multilib/json/multilib.json" CACHE STRING
+    "JSON file defining the multilib for Linux."
+)
 set(LLVM_TOOLCHAIN_LIBRARY_VARIANTS
     "all" CACHE STRING
     "Build only the specified library variants, or \"all\"."
+)
+set(LLVM_TOOLCHAIN_LINUX_LIBRARY_VARIANTS
+    "all" CACHE STRING
+    "Build only the specified Linux library variants, or \"all\"."
 )
 option(
     LIBS_DEPEND_ON_TOOLS
@@ -247,6 +259,7 @@ if(LLVM_TOOLCHAIN_C_LIBRARY STREQUAL musl-embedded OR ENABLE_LINUX_LIBRARIES)
 endif()
 if(ENABLE_LINUX_LIBRARIES)
     include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/fetch_musl.cmake)
+    include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/fetch_kernel.cmake)
 endif()
 
 ##################################################################################################
@@ -519,6 +532,7 @@ if(NOT PREBUILT_TARGET_LIBRARIES)
     # down, switch to comma separated. Enabling the ExternalProject
     # LIST_SEPARATOR option will handle switching it back.
     string(REPLACE ";" "," ENABLE_VARIANTS_PASSTHROUGH "${LLVM_TOOLCHAIN_LIBRARY_VARIANTS}")
+    string(REPLACE ";" "," ENABLE_LINUX_VARIANTS_PASSTHROUGH "${LLVM_TOOLCHAIN_LINUX_LIBRARY_VARIANTS}")
 
     set(multilib_prefix ${CMAKE_BINARY_DIR}/multilib-builds)
 
@@ -606,6 +620,41 @@ if(NOT PREBUILT_TARGET_LIBRARIES)
             add_dependencies(${check_target}-${variant} multilib-${LLVM_TOOLCHAIN_C_LIBRARY}-${check_target}-${variant})
         endforeach()
     endforeach()
+
+    if(ENABLE_LINUX_LIBRARIES)
+        set(multilib_prefix ${CMAKE_BINARY_DIR}/multilib-linux-builds)
+        ExternalProject_Add(
+            multilib-linux
+            SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/linux-multilib
+            STAMP_DIR ${multilib_prefix}/multilib/linux-stamp
+            BINARY_DIR ${multilib_prefix}/multilib/linux-build
+            DOWNLOAD_DIR ${multilib_prefix}/multilib/linux-dl
+            TMP_DIR ${multilib_prefix}/multilib/linux-tmp
+            INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}/llvm/${LINUX_TARGET_LIBRARIES_DIR}
+            DEPENDS ${lib_tool_dependencies}
+            CMAKE_ARGS
+            ${compiler_launcher_cmake_args}
+            -DLLVM_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}/llvm
+            -DMULTILIB_JSON=${LLVM_TOOLCHAIN_MULTILIB_JSON}
+            -DENABLE_VARIANTS=${LLVM_TOOLCHAIN_LINUX_LIBRARY_VARIANTS}
+            -DFETCHCONTENT_SOURCE_DIR_MUSL-EMBEDDED=${FETCHCONTENT_SOURCE_DIR_MUSL-EMBEDDED}
+            -DFETCHCONTENT_SOURCE_DIR_MUSL=${FETCHCONTENT_SOURCE_DIR_MUSL}
+            -DFETCHCONTENT_SOURCE_DIR_LINUX=${FETCHCONTENT_SOURCE_DIR_LINUX}
+            -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
+            -DPROJECT_PREFIX=${multilib_prefix}
+            -DNUMERICAL_BUILD_NAMES=${SHORT_BUILD_PATHS}
+            USES_TERMINAL_CONFIGURE TRUE
+            USES_TERMINAL_BUILD TRUE
+            LIST_SEPARATOR ,
+            CONFIGURE_HANDLED_BY_BUILD TRUE
+            TEST_EXCLUDE_FROM_MAIN TRUE
+            STEP_TARGETS build install
+        )
+        add_dependencies(
+            llvm-toolchain-runtimes
+            multilib-linux-install
+        )
+    endif()
 endif()
 
 FILE(WRITE "${CMAKE_BINARY_DIR}/llvm/${TARGET_CFI_DIR}/cfi_ignorelist.txt" "")

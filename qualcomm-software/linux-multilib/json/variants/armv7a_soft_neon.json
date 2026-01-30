@@ -1,0 +1,14 @@
+{
+    "args": {
+        "common": {
+            "TARGET_ARCH": "armv7a",
+            "VARIANT": "armv7a_soft_neon",
+            "COMPILE_FLAGS": "-mcpu=cortex-a9 -mfloat-abi=softfp -mfpu=neon",
+            "LIBRARY_BUILD_TYPE": "release"
+        },
+        "musl-embedded": {
+            "ENABLE_CXX_LIBS": "ON",
+            "EXTRA_MUSL-EMBEDDED_CFLAGS": "-mno-unaligned-access -fPIC -fno-rounding-math"
+        }
+    }
+}

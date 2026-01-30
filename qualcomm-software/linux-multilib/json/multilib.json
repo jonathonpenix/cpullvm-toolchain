@@ -1,0 +1,32 @@
+{
+    "libs": [
+        {
+            "variant": "aarch64a",
+            "json": "aarch64a.json"
+        },
+        {
+            "variant": "aarch64a_pacret",
+            "json": "aarch64a_pacret.json"
+        },
+        {
+            "variant": "aarch64a_pacret_bti",
+            "json": "aarch64a_pacret_bti.json"
+        },
+        {
+            "variant": "armv7_softfp_neon",
+            "json": "armv7_softfp_neon.json"
+        },
+        {
+            "variant": "rv32imac_ilp32",
+            "json": "rv32imac_ilp32.json"
+        },
+        {
+            "variant": "rv64imac_lp64",
+            "json": "rv64imac_lp64.json"
+        },
+        {
+            "variant": "rv64gc_lp64d",
+            "json": "rv64gc_lp64d.json"
+        }
+    ]
+}
