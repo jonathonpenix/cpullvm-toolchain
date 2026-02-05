@@ -154,8 +154,14 @@ set(LLVM_DISTRIBUTION_COMPONENTS
     clang-resource-headers
     clang
     dsymutil
-    lld
     ld.eld
+    liblldb
+    lld
+    lldb
+    lldb-argdumper
+    lldb-dap
+    lldb-python-scripts
+    lldb-server
     llvm-ar
     llvm-config
     llvm-cov
@@ -183,7 +189,7 @@ set(LLVM_TOOLCHAIN_DISTRIBUTION_COMPONENTS
     CACHE STRING "Components defined by this CMakeLists that should be
 installed by the install-llvm-toolchain target"
 )
-set(LLVM_ENABLE_PROJECTS clang;lld;polly CACHE STRING "")
+set(LLVM_ENABLE_PROJECTS clang;lld;polly;lldb CACHE STRING "")
 set(LLVM_TARGETS_TO_BUILD AArch64;ARM;RISCV;X86 CACHE STRING "")
 # There's test failures when enabling x86 support and testing on native
 # AArch64 Linux machines. Just disable x86 in eld until these are
