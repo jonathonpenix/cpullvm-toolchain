@@ -35,13 +35,28 @@ jobs:
         include:
           - build_script: build.sh
             test_script: test.sh
+            install_script: ''
             target_os: Linux-x86_64
             runner: self-hosted
 
           - build_script: build_musl-embedded_overlay.sh
             test_script: ''
+            install_script: ''
             target_os: Linux-x86_64
             runner: self-hosted
+
+          # FIXME: just for testing
+          - build_script: build.ps1
+            test_script: test.ps1
+            install_script: install_dependencies.ps1
+            target_os: Windows-x86_64
+            runner: windows-latest
+
+          - build_script: build_no_qemu.sh
+            test_script: test.sh
+            install_script: 'install_dependencies.sh'
+            target_os: Linux-AArch64
+            runner: ubuntu-22.04-arm
 
     steps:
       - name: Checkout source
@@ -53,11 +68,26 @@ jobs:
           # old build products if the runner doesn't do it itself.
           clean: true
 
+      - name: Install dependencies
+        if: matrix.install_script != ''
+        run: ./qualcomm-software/scripts/${{ matrix.install_script }}
+
       - name: Apply llvm-project patches
         run: python3 qualcomm-software/cmake/patch_repo.py --method apply qualcomm-software/patches/llvm-project
 
       - name: Build toolchain
         run: ./qualcomm-software/scripts/${{ matrix.build_script }}
+
+      # FIXME: just for testing to give access to the build
+      - name: Upload built packages
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: cpullvm-packages-${{ matrix.build_script }}-${{ matrix.target_os }}
+          path: |
+            build*/cpullvm-*.tar.xz
+            build*/cpullvm-*.zip
+          retention-days: 7
 
       - name: Test
         if: matrix.test_script != ''
