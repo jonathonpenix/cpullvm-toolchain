@@ -85,6 +85,7 @@ jobs:
         with:
           name: cpullvm-packages-${{ matrix.build_script }}-${{ matrix.target_os }}
           path: |
+            build*/CMakeCache.txt
             build*/cpullvm-*.tar.xz
             build*/cpullvm-*.zip
           retention-days: 7

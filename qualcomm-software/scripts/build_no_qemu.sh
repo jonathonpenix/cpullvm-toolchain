@@ -30,7 +30,6 @@ cd "${REPO_ROOT}"/build
 
 cmake ../qualcomm-software \
  -GNinja \
- -DENABLE_LINUX_LIBRARIES=ON \
  -DFETCHCONTENT_QUIET=OFF \
  -DENABLE_QEMU_TESTING=OFF \
  ${EXTRA_CMAKE_ARGS}
