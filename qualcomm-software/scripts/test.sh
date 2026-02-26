@@ -20,6 +20,10 @@ REPO_ROOT=$( git -C "${SCRIPT_DIR}" rev-parse --show-toplevel )
 echo $PYTHONPATH
 echo $PYTHONHOME
 
+# Hack, just assume that the host clang we're using has the default target
+# set to the appropriate triple for the host.
+export LLVM_TARGET_TRIPLE_ENV=`uname -m`-unknown-linux-gnu
+
 # Run all relevant test targets. This might be too broad eventually,
 # but while we have a limited number of variants (and no compiler-rt
 # or libc++ testing enabled) we can run everything.

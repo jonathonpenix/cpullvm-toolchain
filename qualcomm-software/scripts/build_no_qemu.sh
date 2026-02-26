@@ -32,6 +32,7 @@ cmake ../qualcomm-software \
  -GNinja \
  -DFETCHCONTENT_QUIET=OFF \
  -DENABLE_QEMU_TESTING=OFF \
+ -DLLVM_TARGET_TRIPLE_ENV=LLVM_TARGET_TRIPLE_ENV \
  ${EXTRA_CMAKE_ARGS}
 
 ninja package-llvm-toolchain
