@@ -17,6 +17,9 @@ set -ex
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 REPO_ROOT=$( git -C "${SCRIPT_DIR}" rev-parse --show-toplevel )
 
+echo $PYTHONPATH
+echo $PYTHONHOME
+
 # Run all relevant test targets. This might be too broad eventually,
 # but while we have a limited number of variants (and no compiler-rt
 # or libc++ testing enabled) we can run everything.
