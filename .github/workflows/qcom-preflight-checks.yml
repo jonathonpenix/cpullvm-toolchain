@@ -2,9 +2,9 @@ name: QC Preflight Checks
 
 on:
   pull_request:
-    branches: [qualcomm-software, release/qualcomm-software/**]
+    branches: [qualcomm-software, release/qualcomm-software/**, temp/test]
   push:
-    branches: [qualcomm-software, release/qualcomm-software/**]
+    branches: [qualcomm-software, release/qualcomm-software/**, temp/test]
   workflow_dispatch:
 
 jobs:
