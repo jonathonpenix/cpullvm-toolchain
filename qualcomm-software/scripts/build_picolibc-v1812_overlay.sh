@@ -29,7 +29,8 @@ cd "${BUILD_DIR}"
 cmake ../qualcomm-software \
   -GNinja -DFETCHCONTENT_QUIET=OFF \
   -DLLVM_TOOLCHAIN_C_LIBRARY=picolibc-v1812 \
-  -DLLVM_TOOLCHAIN_LIBRARY_OVERLAY_INSTALL=ON
+  -DLLVM_TOOLCHAIN_LIBRARY_OVERLAY_INSTALL=ON \
+  ${EXTRA_CMAKE_ARGS}
 ninja package-llvm-toolchain
 
 # The package-llvm-toolchain target will produce a .tar.xz package, but we also
