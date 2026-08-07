@@ -31,7 +31,7 @@ set_property(CACHE C_LIBRARY PROPERTY STRINGS picolibc picolibc-v1812 musl-embed
 
 # multilib.json and the per-variant JSON files only know about one
 # "picolibc" entry, shared by every fetched picolibc version (e.g.
-# picolibc-main), not a separate entry per version. So map C_LIBRARY to
+# picolibc-v1812), not a separate entry per version. So map C_LIBRARY to
 # its base library name before looking anything up there.
 if(C_LIBRARY MATCHES "^picolibc")
     set(json_library_key picolibc)
