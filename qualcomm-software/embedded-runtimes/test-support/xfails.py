@@ -222,7 +222,7 @@ def main():
             variants=[
                 "aarch64a_tlsie",
                 "aarch64a_soft_nofp_tlsie",
-            ]
+            ],
             description="picolibc's `*-raw-*` tests rely on serial port usage "
                         "to exit correctly which our existing wrappers are not "
                         "setup to handle. Exclude them for now as we aren't losing "
