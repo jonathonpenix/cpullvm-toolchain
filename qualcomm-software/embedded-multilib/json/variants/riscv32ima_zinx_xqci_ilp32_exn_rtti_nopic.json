@@ -11,9 +11,9 @@
       "QEMU_CPU": "rv32,zcd=false,d=false,a=true,zawrs=true,zacas=true,zabha=true,zcb=true,zcmp=false,zilsd=true,zclsd=true,f=false,zfa=false,zdinx=true,zfinx=true,zhinx=true,xqci=true,xqccmp=true,zca=true,xqccmt=true",
       "QEMU_PARAMS": "-bios none",
       "FLASH_ADDRESS": "0x80000000",
-      "FLASH_SIZE": "0x00400000",
-      "RAM_ADDRESS": "0x80400000",
-      "RAM_SIZE": "0x00a00000",
+      "FLASH_SIZE": "0x01000000",
+      "RAM_ADDRESS": "0x81000000",
+      "RAM_SIZE": "0x01000000",
       "LIBRARY_BUILD_TYPE": "minsizerelease"
     },
     "picolibc": {
