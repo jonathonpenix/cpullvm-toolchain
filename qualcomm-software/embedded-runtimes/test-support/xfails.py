@@ -278,6 +278,7 @@ def main():
                 "riscv32imac_zcb_zcmp_zba_zbb_ilp32_nopic",
                 "riscv32ima_xqci_ilp32_nopic",
                 "riscv32ima_xqci_ilp32_exn_rtti_nopic",
+                "riscv32ima_zinx_xqci_ilp32_nopic",
                 "riscv32ima_zinx_xqci_ilp32_exn_rtti_nopic",
                 "riscv32imafc_ilp32f",
                 "riscv32imafc_zba_zbb_ilp32f",
@@ -389,6 +390,7 @@ def main():
                 "riscv32imac_zcb_zcmp_zba_zbb_ilp32_nopic",
                 "riscv32ima_xqci_ilp32_nopic",
                 "riscv32ima_xqci_ilp32_exn_rtti_nopic",
+                "riscv32ima_zinx_xqci_ilp32_nopic",
                 "riscv32ima_zinx_xqci_ilp32_exn_rtti_nopic",
                 "riscv32imafc_ilp32f",
                 "riscv32imafc_zba_zbb_ilp32f",
@@ -467,16 +469,6 @@ def main():
                 "found. This variant has ENABLE_CXX_LIBS=OFF so libcxx headers are not "
                 "installed in the sysroot. ATfE does not encounter this failure because "
                 "their aarch64a_soft_nofp variant has ENABLE_CXX_LIBS=ON.",
-        ),
-        XFail(
-            name="libunwind dwarf_expression_stack.pass.cpp",
-            testnames=[
-                "dwarf_expression_stack.pass.cpp",
-            ],
-            result=NewResult.XFAILED,
-            project="libcxx",
-            description="The test uses fork() and waitpid() which aren't supported by "
-                        "picolibc for embedded targets.",
         ),
     ]
 
