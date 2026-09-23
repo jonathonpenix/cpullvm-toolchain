@@ -265,6 +265,9 @@ set(LLDB_ENABLE_PYTHON ON CACHE BOOL "")
 # Python versions.
 if (NOT CMAKE_HOST_WIN32)
   set(LLDB_ENABLE_DYNAMIC_SCRIPTINTERPRETERS ON CACHE BOOL "")
+  # FIXME: this can be removed once https://github.com/llvm/llvm-project/issues/222116
+  # is resolved.
+  list(APPEND LLVM_DISTRIBUTION_COMPONENTS lldbPluginScriptInterpreterPython)
 endif()
 # Explicitly enable limited API. This overrides the default on Windows, and
 # it ensures we don't accidentally break anything on Linux.
