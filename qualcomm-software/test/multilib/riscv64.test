@@ -2,6 +2,7 @@
 # RUN: %clang_with_libc_cfg -print-multi-directory --target=riscv64-unknown-elf -march=rv64imafc_zba -mabi=lp64 -fno-pic | FileCheck %s --check-prefix=CHECK-IMAC-FNO-PIC
 # RUN: %clang_with_libc_cfg -print-multi-directory --target=riscv64-unknown-elf -march=rv64imafzca -mabi=lp64 -fno-pic | FileCheck %s --check-prefix=CHECK-IMAC-FNO-PIC
 # RUN: %clang_with_libc_cfg -print-multi-directory --target=riscv64-unknown-elf -march=rv64imafdzca_zcd -mabi=lp64 -fno-pic | FileCheck %s --check-prefix=CHECK-IMAC-FNO-PIC
+# RUN: %clang_with_libc_cfg -print-multi-directory --target=riscv64-unknown-elf -march=rv64imac -mabi=lp64 -fno-pic -fmultilib-flag=threads | FileCheck %s --check-prefix=CHECK-IMAC-FNO-PIC
 # CHECK-IMAC-FNO-PIC: riscv64-unknown-elf/riscv64imac_lp64_nopic{{$}}
 # CHECK-IMAC-FNO-PIC-EMPTY:
 
