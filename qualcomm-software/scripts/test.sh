@@ -25,3 +25,6 @@ ninja check-all
 ninja check-llvm-toolchain
 ninja check-cxxabi
 ninja check-unwind
+# DNM: confirm cxx tests pass for these variants
+ninja check-cxx-riscv32ima_xqci_ilp32_exn_rtti_nopic
+ninja check-cxx-riscv32ima_zinx_xqci_ilp32_exn_rtti_nopic
