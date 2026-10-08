@@ -431,22 +431,6 @@ def main():
                 "support this capability. This test is also xfailed in the ATfE "
                 "toolchain (arm/arm-toolchain) for the same reason.",
         ),
-        XFail(
-            name="sme-string-test missing cxx headers",
-            testnames=[
-                "sme-string-test.cpp",
-            ],
-            result=NewResult.XFAILED,
-            project="compiler-rt",
-            variants=[
-                "aarch64a_soft_nofp_tlsie",
-                "aarch64a_soft_nofp_aligned_tlsie",
-            ],
-            description="The test fails to compile because the 'cassert' header is not "
-                "found. This variant has ENABLE_CXX_LIBS=OFF so libcxx headers are not "
-                "installed in the sysroot. ATfE does not encounter this failure because "
-                "their aarch64a_soft_nofp variant has ENABLE_CXX_LIBS=ON.",
-        ),
     ]
 
     tests_to_xfail = []
