@@ -163,6 +163,7 @@ def main():
             project="compiler-rt",
             variants=[
                 "riscv32ima_zinx_xqci_ilp32_nopic",
+                "riscv32ima_zinx_xqci_ilp32_exn_rtti_nopic",
             ],
             description="Possible QEMU zhinx bug in fneg.h/fsgnjn.h (not "
                 "compiler-rt/clang/picolibc):\n"
@@ -189,6 +190,7 @@ def main():
             variants=[
                 "riscv32gc_ilp32d",
                 "riscv32ima_zinx_xqci_ilp32_nopic",
+                "riscv32ima_zinx_xqci_ilp32_exn_rtti_nopic",
                 "riscv64gc_lp64d_nopic",
                 "riscv64gc_zba_zbb_lp64d_nopic",
                 "riscv64gc_lp64_nopic",
@@ -259,7 +261,9 @@ def main():
                 "riscv32imac_zcb_zcmp_ilp32_nopic",
                 "riscv32imac_zcb_zcmp_zba_zbb_ilp32_nopic",
                 "riscv32ima_xqci_ilp32_nopic",
+                "riscv32ima_xqci_ilp32_exn_rtti_nopic",
                 "riscv32ima_zinx_xqci_ilp32_nopic",
+                "riscv32ima_zinx_xqci_ilp32_exn_rtti_nopic",
                 "riscv32imafc_ilp32f",
                 "riscv32imafc_zba_zbb_ilp32f",
                 "riscv32imafc_zcb_zcmp_zba_zbb_ilp32f",
@@ -369,7 +373,9 @@ def main():
                 "riscv32imac_zcb_zcmp_ilp32_nopic",
                 "riscv32imac_zcb_zcmp_zba_zbb_ilp32_nopic",
                 "riscv32ima_xqci_ilp32_nopic",
+                "riscv32ima_xqci_ilp32_exn_rtti_nopic",
                 "riscv32ima_zinx_xqci_ilp32_nopic",
+                "riscv32ima_zinx_xqci_ilp32_exn_rtti_nopic",
                 "riscv32imafc_ilp32f",
                 "riscv32imafc_zba_zbb_ilp32f",
                 "riscv32imafc_zcb_zcmp_zba_zbb_ilp32f",
@@ -393,6 +399,7 @@ def main():
                 "riscv32imac_zcb_zcmp_ilp32_nopic",
                 "riscv32imac_zcb_zcmp_zba_zbb_ilp32_nopic",
                 "riscv32ima_xqci_ilp32_nopic",
+                "riscv32ima_xqci_ilp32_exn_rtti_nopic",
                 "riscv64imac_lp64_nopic",
             ],
             description="cmath.pass.cpp fails on soft-float builds where std::sqrt(long double) "
@@ -430,22 +437,6 @@ def main():
                 "test runner when PAC authentication fails. QEMU semihosting does not "
                 "support this capability. This test is also xfailed in the ATfE "
                 "toolchain (arm/arm-toolchain) for the same reason.",
-        ),
-        XFail(
-            name="sme-string-test missing cxx headers",
-            testnames=[
-                "sme-string-test.cpp",
-            ],
-            result=NewResult.XFAILED,
-            project="compiler-rt",
-            variants=[
-                "aarch64a_soft_nofp_tlsie",
-                "aarch64a_soft_nofp_aligned_tlsie",
-            ],
-            description="The test fails to compile because the 'cassert' header is not "
-                "found. This variant has ENABLE_CXX_LIBS=OFF so libcxx headers are not "
-                "installed in the sysroot. ATfE does not encounter this failure because "
-                "their aarch64a_soft_nofp variant has ENABLE_CXX_LIBS=ON.",
         ),
     ]
 
