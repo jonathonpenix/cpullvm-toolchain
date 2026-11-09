@@ -1,0 +1,158 @@
+# Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+# SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+
+# This workflow allows running additional CI on a pull request by commenting:
+#
+#   /test <check> [<check> ...]
+#
+# where <check> is one of: nightly, nightly-release, zephyr.
+#
+# Only users with write access to the repository may trigger checks, and only
+# for pull requests whose branch lives in this repository. The triggering
+# comment is updated with a link to the run and, once finished, the results.
+#
+# Requesting a check again on the same pull request cancels any in-progress run
+# of that check.
+
+name: PR Comment Checks
+run-name: "PR comment checks #${{ github.event.issue.number }}"
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+jobs:
+  parse:
+    if: >-
+      github.repository == 'qualcomm/cpullvm-toolchain' &&
+      github.event.issue.pull_request &&
+      startsWith(github.event.comment.body, '/test ')
+    runs-on: ubuntu-24.04
+    permissions:
+      pull-requests: write
+    outputs:
+      sha: ${{ steps.parse.outputs.sha }}
+      checks: ${{ steps.parse.outputs.checks }}
+    steps:
+      - name: Parse request
+        id: parse
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const comment = context.payload.comment;
+            const appendToComment = note => github.rest.issues.updateComment({
+              owner, repo, comment_id: comment.id,
+              body: `${comment.body}\n\n> _${note}_`,
+            });
+            const reject = async reason => {
+              await appendToComment(`Not running checks: ${reason}`);
+              core.setFailed(reason);
+            };
+
+            const { data: perm } = await github.rest.repos.getCollaboratorPermissionLevel({
+              owner, repo, username: comment.user.login,
+            });
+            if (!['admin', 'write'].includes(perm.permission)) {
+              return reject(`@${comment.user.login} does not have write access.`);
+            }
+
+            const supported = ['nightly', 'nightly-release', 'zephyr'];
+            const checks = [...new Set(comment.body.split(/\r?\n/)[0].trim().split(/\s+/).slice(1))];
+            const unknown = checks.filter(c => !supported.includes(c));
+            if (!checks.length || unknown.length) {
+              const problem = unknown.length ? `unknown check(s) '${unknown.join(' ')}'` : 'no checks given';
+              return reject(`${problem}. Supported: ${supported.join(', ')}.`);
+            }
+            // Zephyr tests the toolchain built by the nightly check.
+            if (checks.includes('zephyr') && !checks.includes('nightly')) {
+              checks.push('nightly');
+            }
+
+            const { data: pr } = await github.rest.pulls.get({
+              owner, repo, pull_number: context.issue.number,
+            });
+            if (pr.head.repo?.full_name !== `${owner}/${repo}`) {
+              return reject('pull requests from forks are not supported.');
+            }
+
+            core.setOutput('sha', pr.head.sha);
+            core.setOutput('checks', JSON.stringify(checks));
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+            await appendToComment(`Running ${checks.join(', ')} on ${pr.head.sha} in ${runUrl}`);
+
+  nightly:
+    needs: parse
+    if: contains(fromJSON(needs.parse.outputs.checks), 'nightly')
+    concurrency:
+      group: pr-comment-checks-${{ github.event.issue.number }}-nightly
+      cancel-in-progress: true
+    uses: ./.github/workflows/nightly.yml
+    with:
+      ref: ${{ needs.parse.outputs.sha }}
+
+  nightly-release:
+    needs: parse
+    if: contains(fromJSON(needs.parse.outputs.checks), 'nightly-release')
+    concurrency:
+      group: pr-comment-checks-${{ github.event.issue.number }}-nightly-release
+      cancel-in-progress: true
+    uses: ./.github/workflows/nightly.yml
+    with:
+      ref: ${{ needs.parse.outputs.sha }}
+      enable_assertions: false
+      artifact_suffix: -release
+
+  zephyr:
+    needs: [parse, nightly]
+    # Run as long as the Linux toolchain was built, even if other nightly jobs
+    # failed. If it wasn't, fetching the toolchain fails this job.
+    if: >-
+      !cancelled() && needs.parse.result == 'success' &&
+      needs.nightly.result != 'cancelled' &&
+      contains(fromJSON(needs.parse.outputs.checks), 'zephyr')
+    concurrency:
+      group: pr-comment-checks-${{ github.event.issue.number }}-zephyr
+      cancel-in-progress: true
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/zephyr-twister-tests.yml
+    with:
+      # Use the toolchain built from the pull request by the nightly job above.
+      run-id: ${{ github.run_id }}
+
+  report:
+    needs: [parse, nightly, nightly-release, zephyr]
+    if: always() && needs.parse.result == 'success'
+    runs-on: ubuntu-24.04
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Add results to the comment
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+          CHECKS: ${{ needs.parse.outputs.checks }}
+          SHA: ${{ needs.parse.outputs.sha }}
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const needs = JSON.parse(process.env.NEEDS);
+            const icons = { success: '✅', failure: '❌', cancelled: '⚪', skipped: '⏭️' };
+            const lines = JSON.parse(process.env.CHECKS).map(check => {
+              const result = needs[check].result;
+              return `- ${icons[result] ?? '❔'} \`${check}\`: ${result}`;
+            });
+
+            // Re-read the comment, since it was updated by the parse job.
+            const { data: comment } = await github.rest.issues.getComment({
+              owner, repo, comment_id: context.payload.comment.id,
+            });
+            await github.rest.issues.updateComment({
+              owner, repo, comment_id: comment.id,
+              body: [comment.body, `Results for ${process.env.SHA}:`, lines.join('\n')].join('\n\n'),
+            });

@@ -18,6 +18,18 @@ on:
           Only Linux packages should be used.
         required: false
         default: cpullvm-packages-build.sh-Linux-x86
+  workflow_call:
+    inputs:
+      run-id:
+        description: >
+          Run ID of a cpullvm-toolchain workflow that built the Linux x86_64 toolchain.
+          Leave blank to use the latest nightly.
+        type: string
+        default: ''
+      package-name:
+        description: Package name of the toolchain to download.
+        type: string
+        default: cpullvm-packages-build.sh-Linux-x86
   schedule:
     - cron: '0 5 * * 1' # Sunday 21:00 PST (Monday 05:00 UTC)
   pull_request:
@@ -123,6 +135,9 @@ jobs:
       - name: Download split XML results
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
+          # Only the Twister results; when called from another workflow the run
+          # may also contain (large) toolchain artifacts.
+          pattern: zephyr-twister-test-results-*
           path: split_xml
 
       - name: Install junitparser
