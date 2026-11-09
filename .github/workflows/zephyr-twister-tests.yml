@@ -14,10 +14,10 @@ on:
         default: ''
       package-name:
         description: >
-          Package name of the toolchain to download. Defaults to 'cpullvm-packages-build.sh-Linux-x86'.
+          Package name of the toolchain to download. Defaults to 'cpullvm-packages-build.sh-Linux-x86_64'.
           Only Linux packages should be used.
         required: false
-        default: cpullvm-packages-build.sh-Linux-x86
+        default: cpullvm-packages-build.sh-Linux-x86_64
   workflow_call:
     inputs:
       run-id:
@@ -29,7 +29,7 @@ on:
       package-name:
         description: Package name of the toolchain to download.
         type: string
-        default: cpullvm-packages-build.sh-Linux-x86
+        default: cpullvm-packages-build.sh-Linux-x86_64
   schedule:
     - cron: '0 5 * * 1' # Sunday 21:00 PST (Monday 05:00 UTC)
   pull_request:
@@ -87,7 +87,7 @@ jobs:
         with:
           github-token: ${{ github.token }}
           run-id: ${{ inputs.run-id }}
-          package-name: ${{ inputs.package-name || 'cpullvm-packages-build.sh-Linux-x86' }}
+          package-name: ${{ inputs.package-name || 'cpullvm-packages-build.sh-Linux-x86_64' }}
 
       - name: West setup
         run: |

@@ -22,10 +22,10 @@ inputs:
     default: ''
   package-name:
     description: >
-      Package name of the toolchain to download. Defaults to 'cpullvm-packages-build.sh-Linux-x86'.
+      Package name of the toolchain to download. Defaults to 'cpullvm-packages-build.sh-Linux-x86_64'.
       Only Linux packages should be used.
     required: false
-    default: cpullvm-packages-build.sh-Linux-x86
+    default: cpullvm-packages-build.sh-Linux-x86_64
   install-dir:
     description: Directory to extract the toolchain into.
     required: false

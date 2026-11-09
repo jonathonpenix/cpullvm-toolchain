@@ -3,9 +3,10 @@
 
 # This workflow allows running additional CI on a pull request by commenting:
 #
-#   /test <check> [<check> ...]
+#   /test <check>
 #
-# where <check> is one of: nightly, nightly-release, zephyr.
+# where <check> is one of: nightly, nightly-release, zephyr. To run more than
+# one check, post one comment per check.
 #
 # Only users with write access to the repository may trigger checks, and only
 # for pull requests whose branch lives in this repository. The triggering
@@ -35,7 +36,7 @@ jobs:
       pull-requests: write
     outputs:
       sha: ${{ steps.parse.outputs.sha }}
-      checks: ${{ steps.parse.outputs.checks }}
+      check: ${{ steps.parse.outputs.check }}
     steps:
       - name: Parse request
         id: parse
@@ -49,7 +50,7 @@ jobs:
               body: `${comment.body}\n\n> _${note}_`,
             });
             const reject = async reason => {
-              await appendToComment(`Not running checks: ${reason}`);
+              await appendToComment(`Not running check: ${reason}`);
               core.setFailed(reason);
             };
 
@@ -61,16 +62,11 @@ jobs:
             }
 
             const supported = ['nightly', 'nightly-release', 'zephyr'];
-            const checks = [...new Set(comment.body.split(/\r?\n/)[0].trim().split(/\s+/).slice(1))];
-            const unknown = checks.filter(c => !supported.includes(c));
-            if (!checks.length || unknown.length) {
-              const problem = unknown.length ? `unknown check(s) '${unknown.join(' ')}'` : 'no checks given';
-              return reject(`${problem}. Supported: ${supported.join(', ')}.`);
+            const args = comment.body.split(/\r?\n/)[0].trim().split(/\s+/).slice(1);
+            if (args.length !== 1 || !supported.includes(args[0])) {
+              return reject(`expected '/test <check>' with <check> one of: ${supported.join(', ')}.`);
             }
-            // Zephyr tests the toolchain built by the nightly check.
-            if (checks.includes('zephyr') && !checks.includes('nightly')) {
-              checks.push('nightly');
-            }
+            const check = args[0];
 
             const { data: pr } = await github.rest.pulls.get({
               owner, repo, pull_number: context.issue.number,
@@ -80,13 +76,13 @@ jobs:
             }
 
             core.setOutput('sha', pr.head.sha);
-            core.setOutput('checks', JSON.stringify(checks));
+            core.setOutput('check', check);
             const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
-            await appendToComment(`Running ${checks.join(', ')} on ${pr.head.sha} in ${runUrl}`);
+            await appendToComment(`Running ${check} on ${pr.head.sha} in ${runUrl}`);
 
   nightly:
     needs: parse
-    if: contains(fromJSON(needs.parse.outputs.checks), 'nightly')
+    if: needs.parse.outputs.check == 'nightly'
     concurrency:
       group: pr-comment-checks-${{ github.event.issue.number }}-nightly
       cancel-in-progress: true
@@ -96,7 +92,7 @@ jobs:
 
   nightly-release:
     needs: parse
-    if: contains(fromJSON(needs.parse.outputs.checks), 'nightly-release')
+    if: needs.parse.outputs.check == 'nightly-release'
     concurrency:
       group: pr-comment-checks-${{ github.event.issue.number }}-nightly-release
       cancel-in-progress: true
@@ -104,26 +100,19 @@ jobs:
     with:
       ref: ${{ needs.parse.outputs.sha }}
       enable_assertions: false
-      artifact_suffix: -release
 
   zephyr:
-    needs: [parse, nightly]
-    # Run as long as the Linux toolchain was built, even if other nightly jobs
-    # failed. If it wasn't, fetching the toolchain fails this job.
-    if: >-
-      !cancelled() && needs.parse.result == 'success' &&
-      needs.nightly.result != 'cancelled' &&
-      contains(fromJSON(needs.parse.outputs.checks), 'zephyr')
+    needs: parse
+    if: needs.parse.outputs.check == 'zephyr'
     concurrency:
       group: pr-comment-checks-${{ github.event.issue.number }}-zephyr
       cancel-in-progress: true
     permissions:
       contents: read
       actions: read
+    # Note: this currently tests the latest nightly toolchain, not one built
+    # from the pull request.
     uses: ./.github/workflows/zephyr-twister-tests.yml
-    with:
-      # Use the toolchain built from the pull request by the nightly job above.
-      run-id: ${{ github.run_id }}
 
   report:
     needs: [parse, nightly, nightly-release, zephyr]
@@ -136,17 +125,15 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           NEEDS: ${{ toJSON(needs) }}
-          CHECKS: ${{ needs.parse.outputs.checks }}
+          CHECK: ${{ needs.parse.outputs.check }}
           SHA: ${{ needs.parse.outputs.sha }}
         with:
           script: |
             const { owner, repo } = context.repo;
-            const needs = JSON.parse(process.env.NEEDS);
-            const icons = { success: '✅', failure: '❌', cancelled: '⚪', skipped: '⏭️' };
-            const lines = JSON.parse(process.env.CHECKS).map(check => {
-              const result = needs[check].result;
-              return `- ${icons[result] ?? '❔'} \`${check}\`: ${result}`;
-            });
+            const check = process.env.CHECK;
+            const result = JSON.parse(process.env.NEEDS)[check].result;
+            const icons = { success: '✅', failure: '❌', cancelled: '⚪' };
+            const note = `${icons[result] ?? '❔'} \`${check}\` ${result} for ${process.env.SHA}.`;
 
             // Re-read the comment, since it was updated by the parse job.
             const { data: comment } = await github.rest.issues.getComment({
@@ -154,5 +141,5 @@ jobs:
             });
             await github.rest.issues.updateComment({
               owner, repo, comment_id: comment.id,
-              body: [comment.body, `Results for ${process.env.SHA}:`, lines.join('\n')].join('\n\n'),
+              body: `${comment.body}\n\n${note}`,
             });

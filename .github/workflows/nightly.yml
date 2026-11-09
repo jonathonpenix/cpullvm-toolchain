@@ -40,10 +40,6 @@ on:
         description: 'Enable LLVM assertions'
         type: boolean
         default: true
-      artifact_suffix:
-        description: 'Suffix for uploaded artifact names, to keep them unique when called more than once in a run'
-        type: string
-        default: ''
   pull_request:
     paths:
       - '.github/workflows/nightly.yml'
@@ -54,10 +50,8 @@ permissions:
   contents: read
 
 # Cancel in-progress runs for `pull_request` events only.
-# enable_assertions is part of the group since this may be called more than once
-# (with different settings) from the same caller run.
 concurrency:
-  group: ${{ github.workflow }}-nightly-${{ github.head_ref || github.run_id }}-${{ github.ref }}-${{ inputs.enable_assertions }}
+  group: ${{ github.workflow }}-nightly-${{ github.head_ref || github.run_id }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -91,7 +85,7 @@ jobs:
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: success()
         with:
-          name: cpullvm-packages-build.sh-Linux-x86${{ inputs.artifact_suffix }}
+          name: cpullvm-packages-build.sh-Linux-x86_64
           path: build*/cpullvm-*.tar.xz
           if-no-files-found: error
           retention-days: 7
@@ -154,7 +148,7 @@ jobs:
       - name: Download Linux-x86 package
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
-          name: cpullvm-packages-build.sh-Linux-x86${{ inputs.artifact_suffix }}
+          name: cpullvm-packages-build.sh-Linux-x86_64
 
       - name: Install dependencies
         if: matrix.install_script != ''
@@ -170,7 +164,7 @@ jobs:
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: success()
         with:
-          name: cpullvm-packages-${{ matrix.build_script }}-${{ matrix.target_os }}${{ inputs.artifact_suffix }}
+          name: cpullvm-packages-${{ matrix.build_script }}-${{ matrix.target_os }}
           path: |
             build*/cpullvm-*.tar.xz
             build*/cpullvm-*.zip
