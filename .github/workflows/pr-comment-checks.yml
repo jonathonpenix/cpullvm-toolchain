@@ -11,6 +11,9 @@
 # Linux x86_64 toolchain to test (e.g. a premerge or nightly run). To run more
 # than one check, post one comment per check.
 #
+# As in linux-premerge.yml, nightly and nightly-release build the pull request
+# merged into its base branch, so they are rejected if it has conflicts.
+#
 # Only users with write access to the repository may trigger checks, and only
 # for pull requests whose branch lives in this repository. The triggering
 # comment is updated with a link to the run and, once finished, the results.
@@ -38,9 +41,10 @@ jobs:
     permissions:
       pull-requests: write
     outputs:
-      sha: ${{ steps.parse.outputs.sha }}
       check: ${{ steps.parse.outputs.check }}
+      ref: ${{ steps.parse.outputs.ref }}
       toolchain_run_id: ${{ steps.parse.outputs.toolchain_run_id }}
+      description: ${{ steps.parse.outputs.description }}
     steps:
       - name: Parse request
         id: parse
@@ -85,19 +89,42 @@ jobs:
               return reject(`expected \`${usage[check]}\`.`);
             }
 
-            const { data: pr } = await github.rest.pulls.get({
+            const getPr = async () => (await github.rest.pulls.get({
               owner, repo, pull_number: context.issue.number,
-            });
+            })).data;
+            let pr = await getPr();
             if (pr.head.repo?.full_name !== `${owner}/${repo}`) {
               return reject('pull requests from forks are not supported.');
             }
 
-            core.setOutput('sha', pr.head.sha);
+            // Like linux-premerge.yml, build the PR's test merge commit into its
+            // base branch rather than the head of the PR branch. GitHub computes
+            // this asynchronously, so it may not be available immediately.
+            let ref = '';
+            let description = `\`${check}\` on ${pr.head.sha}`;
+            if (check !== 'zephyr') {
+              for (let i = 0; pr.mergeable === null && i < 10; i++) {
+                await new Promise(resolve => setTimeout(resolve, 3000));
+                pr = await getPr();
+              }
+              if (pr.mergeable === null) {
+                return reject('GitHub has not computed the merge commit yet, please try again shortly.');
+              }
+              if (!pr.mergeable) {
+                return reject(`the pull request has conflicts with ${pr.base.ref}.`);
+              }
+              ref = pr.merge_commit_sha;
+              description = `\`${check}\` on ${pr.head.sha} (merged into ${pr.base.ref} as ${ref})`;
+            } else {
+              description += ` with the toolchain from run ${toolchainRunId}`;
+            }
+
             core.setOutput('check', check);
+            core.setOutput('ref', ref);
             core.setOutput('toolchain_run_id', toolchainRunId);
+            core.setOutput('description', description);
             const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
-            const toolchain = toolchainRunId ? ` with the toolchain from run ${toolchainRunId}` : '';
-            await appendToComment(`Running ${check} on ${pr.head.sha}${toolchain} in ${runUrl}`);
+            await appendToComment(`Running ${description} in ${runUrl}`);
 
   nightly:
     needs: parse
@@ -107,7 +134,7 @@ jobs:
       cancel-in-progress: true
     uses: ./.github/workflows/nightly.yml
     with:
-      ref: ${{ needs.parse.outputs.sha }}
+      ref: ${{ needs.parse.outputs.ref }}
 
   nightly-release:
     needs: parse
@@ -117,7 +144,7 @@ jobs:
       cancel-in-progress: true
     uses: ./.github/workflows/nightly.yml
     with:
-      ref: ${{ needs.parse.outputs.sha }}
+      ref: ${{ needs.parse.outputs.ref }}
       enable_assertions: false
 
   zephyr:
@@ -145,17 +172,14 @@ jobs:
         env:
           NEEDS: ${{ toJSON(needs) }}
           CHECK: ${{ needs.parse.outputs.check }}
-          SHA: ${{ needs.parse.outputs.sha }}
-          TOOLCHAIN_RUN_ID: ${{ needs.parse.outputs.toolchain_run_id }}
+          DESCRIPTION: ${{ needs.parse.outputs.description }}
         with:
           script: |
             const { owner, repo } = context.repo;
             const check = process.env.CHECK;
             const result = JSON.parse(process.env.NEEDS)[check].result;
             const icons = { success: '✅', failure: '❌', cancelled: '⚪' };
-            const toolchain = process.env.TOOLCHAIN_RUN_ID
-              ? ` with the toolchain from run ${process.env.TOOLCHAIN_RUN_ID}` : '';
-            const note = `${icons[result] ?? '❔'} \`${check}\` ${result} for ${process.env.SHA}${toolchain}.`;
+            const note = `${icons[result] ?? '❔'} ${process.env.DESCRIPTION}: ${result}.`;
 
             // Re-read the comment, since it was updated by the parse job.
             const { data: comment } = await github.rest.issues.getComment({
