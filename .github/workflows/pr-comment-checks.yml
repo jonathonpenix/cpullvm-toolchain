@@ -3,10 +3,13 @@
 
 # This workflow allows running additional CI on a pull request by commenting:
 #
-#   /test <check>
+#   /test nightly
+#   /test nightly-release
+#   /test zephyr <run-id>
 #
-# where <check> is one of: nightly, nightly-release, zephyr. To run more than
-# one check, post one comment per check.
+# where <run-id> is the ID of a workflow run in this repository that built the
+# Linux x86_64 toolchain to test (e.g. a premerge or nightly run). To run more
+# than one check, post one comment per check.
 #
 # Only users with write access to the repository may trigger checks, and only
 # for pull requests whose branch lives in this repository. The triggering
@@ -37,6 +40,7 @@ jobs:
     outputs:
       sha: ${{ steps.parse.outputs.sha }}
       check: ${{ steps.parse.outputs.check }}
+      toolchain_run_id: ${{ steps.parse.outputs.toolchain_run_id }}
     steps:
       - name: Parse request
         id: parse
@@ -61,12 +65,25 @@ jobs:
               return reject(`@${comment.user.login} does not have write access.`);
             }
 
-            const supported = ['nightly', 'nightly-release', 'zephyr'];
-            const args = comment.body.split(/\r?\n/)[0].trim().split(/\s+/).slice(1);
-            if (args.length !== 1 || !supported.includes(args[0])) {
-              return reject(`expected '/test <check>' with <check> one of: ${supported.join(', ')}.`);
+            const usage = {
+              'nightly': '/test nightly',
+              'nightly-release': '/test nightly-release',
+              'zephyr': '/test zephyr <run-id>',
+            };
+            const [check, ...args] = comment.body.split(/\r?\n/)[0].trim().split(/\s+/).slice(1);
+            if (!Object.hasOwn(usage, check)) {
+              return reject(`expected one of: ${Object.values(usage).map(u => `\`${u}\``).join(', ')}.`);
             }
-            const check = args[0];
+
+            // Only zephyr takes an argument: the ID of the run that built the
+            // toolchain.
+            // FIXME: It might be good to make this optional and default to the
+            // toolchain from the linux-premerge.yml run for the PR's head SHA.
+            const toolchainRunId =
+              (check === 'zephyr' && args.length === 1 && /^\d+$/.test(args[0])) ? args[0] : '';
+            if (check === 'zephyr' ? !toolchainRunId : args.length) {
+              return reject(`expected \`${usage[check]}\`.`);
+            }
 
             const { data: pr } = await github.rest.pulls.get({
               owner, repo, pull_number: context.issue.number,
@@ -77,8 +94,10 @@ jobs:
 
             core.setOutput('sha', pr.head.sha);
             core.setOutput('check', check);
+            core.setOutput('toolchain_run_id', toolchainRunId);
             const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
-            await appendToComment(`Running ${check} on ${pr.head.sha} in ${runUrl}`);
+            const toolchain = toolchainRunId ? ` with the toolchain from run ${toolchainRunId}` : '';
+            await appendToComment(`Running ${check} on ${pr.head.sha}${toolchain} in ${runUrl}`);
 
   nightly:
     needs: parse
@@ -110,9 +129,9 @@ jobs:
     permissions:
       contents: read
       actions: read
-    # Note: this currently tests the latest nightly toolchain, not one built
-    # from the pull request.
     uses: ./.github/workflows/zephyr-twister-tests.yml
+    with:
+      run-id: ${{ needs.parse.outputs.toolchain_run_id }}
 
   report:
     needs: [parse, nightly, nightly-release, zephyr]
@@ -127,13 +146,16 @@ jobs:
           NEEDS: ${{ toJSON(needs) }}
           CHECK: ${{ needs.parse.outputs.check }}
           SHA: ${{ needs.parse.outputs.sha }}
+          TOOLCHAIN_RUN_ID: ${{ needs.parse.outputs.toolchain_run_id }}
         with:
           script: |
             const { owner, repo } = context.repo;
             const check = process.env.CHECK;
             const result = JSON.parse(process.env.NEEDS)[check].result;
             const icons = { success: '✅', failure: '❌', cancelled: '⚪' };
-            const note = `${icons[result] ?? '❔'} \`${check}\` ${result} for ${process.env.SHA}.`;
+            const toolchain = process.env.TOOLCHAIN_RUN_ID
+              ? ` with the toolchain from run ${process.env.TOOLCHAIN_RUN_ID}` : '';
+            const note = `${icons[result] ?? '❔'} \`${check}\` ${result} for ${process.env.SHA}${toolchain}.`;
 
             // Re-read the comment, since it was updated by the parse job.
             const { data: comment } = await github.rest.issues.getComment({
