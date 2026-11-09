@@ -11,6 +11,17 @@ name: Run libc++ tests
 
 on:
   workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Branch, tag or SHA to build (defaults to the triggering ref)'
+        type: string
+        default: ''
+  workflow_call:
+    inputs:
+      ref:
+        description: 'Branch, tag or SHA to build (defaults to the triggering ref)'
+        type: string
+        default: ''
   schedule:
     - cron: '0 22 * * 6'  # 3 PM PDT (UTC-7), Saturday
   pull_request:
@@ -39,6 +50,7 @@ jobs:
           # We build in the repository and rely on clean to cleanup possible
           # old build products if the runner doesn't do it itself.
           clean: true
+          ref: ${{ inputs.ref }}
 
       - name: Install dependencies
         run: ./qualcomm-software/scripts/install_dependencies_x86.sh

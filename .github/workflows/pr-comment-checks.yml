@@ -5,13 +5,14 @@
 #
 #   /test nightly
 #   /test nightly-release
+#   /test libcxx
 #   /test zephyr <run-id>
 #
 # where <run-id> is the ID of a workflow run in this repository that built the
 # Linux x86_64 toolchain to test (e.g. a premerge or nightly run). To run more
 # than one check, post one comment per check.
 #
-# As in linux-premerge.yml, nightly and nightly-release build the pull request
+# As in linux-premerge.yml, all checks other than zephyr build the pull request
 # merged into its base branch, so they are rejected if it has conflicts.
 #
 # Only users with write access to the repository may trigger checks, and only
@@ -72,6 +73,7 @@ jobs:
             const usage = {
               'nightly': '/test nightly',
               'nightly-release': '/test nightly-release',
+              'libcxx': '/test libcxx',
               'zephyr': '/test zephyr <run-id>',
             };
             const [check, ...args] = comment.body.split(/\r?\n/)[0].trim().split(/\s+/).slice(1);
@@ -147,6 +149,16 @@ jobs:
       ref: ${{ needs.parse.outputs.ref }}
       enable_assertions: false
 
+  libcxx:
+    needs: parse
+    if: needs.parse.outputs.check == 'libcxx'
+    concurrency:
+      group: pr-comment-checks-${{ github.event.issue.number }}-libcxx
+      cancel-in-progress: true
+    uses: ./.github/workflows/libcxx-test.yml
+    with:
+      ref: ${{ needs.parse.outputs.ref }}
+
   zephyr:
     needs: parse
     if: needs.parse.outputs.check == 'zephyr'
@@ -161,7 +173,7 @@ jobs:
       run-id: ${{ needs.parse.outputs.toolchain_run_id }}
 
   report:
-    needs: [parse, nightly, nightly-release, zephyr]
+    needs: [parse, nightly, nightly-release, libcxx, zephyr]
     if: always() && needs.parse.result == 'success'
     runs-on: ubuntu-24.04
     permissions:
